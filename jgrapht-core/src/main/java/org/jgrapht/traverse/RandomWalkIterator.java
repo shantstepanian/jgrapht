@@ -18,6 +18,7 @@
 package org.jgrapht.traverse;
 
 import org.jgrapht.*;
+import org.jgrapht.alg.util.Pair;
 
 import java.util.*;
 
@@ -199,11 +200,43 @@ public class RandomWalkIterator<V, E>
     @Override
     public V next()
     {
+        Pair<V, E> nextEdge = nextEdge();
+        if (nextEdge == null) {
+            return null;
+        }
+        return nextEdge.getFirst();
+    }
+
+    /**
+     * Present a view of the iterator that traverses and returns the edges, not the vertices. Once asEdgeIterator() is
+     * called, one should no longer iterate over the original vertex-based instance.
+     *
+     * @return a new edge-based iterator
+     */
+    public Iterator<E> asEdgeIterator() {
+        return new Iterator<E>() {
+            @Override
+            public boolean hasNext() {
+                // Ensure that there is another vertex available
+                // and that there does exist an edge out of the current vertex
+                return RandomWalkIterator.this.hasNext()
+                        && !getPotentialEdges().isEmpty();
+            }
+
+            @Override
+            public E next() {
+                return nextEdge().getSecond();
+            }
+        };
+    }
+
+    private Pair<V, E> nextEdge()
+    {
         if (!hasNext()) {
             throw new NoSuchElementException();
         }
 
-        Set<? extends E> potentialEdges = graph.outgoingEdgesOf(currentVertex);
+        Set<? extends E> potentialEdges = getPotentialEdges();
 
         // randomly select an edge from the set of potential edges.
         E nextEdge = drawEdge(potentialEdges);
@@ -214,11 +247,15 @@ public class RandomWalkIterator<V, E>
             fireEdgeTraversed(createEdgeTraversalEvent(nextEdge));
             fireVertexTraversed(createVertexTraversalEvent(nextVertex));
             currentVertex = nextVertex;
-            return nextVertex;
+            return Pair.of(nextVertex, nextEdge);
         } else {
             sinkReached = true;
-            return currentVertex;
+            return Pair.of(currentVertex, null);
         }
+    }
+
+    private Set<E> getPotentialEdges() {
+        return graph.outgoingEdgesOf(currentVertex);
     }
 
     /**

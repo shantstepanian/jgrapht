@@ -87,6 +87,35 @@ public class RandomWalkIteratorTest
     }
 
     /**
+     * Tests iterator does not have more elements after reaching sink vertex.
+     */
+    @Test
+    public void testEdgeIteration()
+    {
+        Graph<String,
+            DefaultEdge> graph = GraphTypeBuilder
+                .directed().vertexSupplier(SupplierUtil.createStringSupplier())
+                .edgeClass(DefaultEdge.class).allowingMultipleEdges(false).allowingSelfLoops(true)
+                .buildGraph();
+        int graphSize = 10;
+        LinearGraphGenerator<String, DefaultEdge> graphGenerator =
+            new LinearGraphGenerator<>(graphSize);
+        graphGenerator.generateGraph(graph);
+        Iterator<DefaultEdge> iter = new RandomWalkIterator<>(graph).asEdgeIterator();
+
+        // The linear graph has (graphSize) vertics and (graphSize - 1 edges). Verify the edges do link the vertices
+        for (int i = 0; i < graphSize - 1; i++) {
+            assertTrue(iter.hasNext());
+            DefaultEdge edge = iter.next();
+            assertEquals(String.format("(%d : %d)", i, i + 1), edge.toString());
+            assertNotNull(edge);
+        }
+
+        // Verify that no more edges exist
+        assertFalse(iter.hasNext());
+    }
+
+    /**
      * Tests iterator is exhausted after maxSteps
      */
     @Test
@@ -130,6 +159,34 @@ public class RandomWalkIteratorTest
             step++;
             assertEquals(String.valueOf(step % ringSize), iter.next());
         }
+    }
+
+    /**
+     * Test deterministic walk with edge iterator using directed ring graph.
+     */
+    @Test
+    public void testDeterministicEdgeIteration()
+    {
+        Graph<String,
+            DefaultEdge> graph = GraphTypeBuilder
+                .directed().vertexSupplier(SupplierUtil.createStringSupplier())
+                .edgeClass(DefaultEdge.class).allowingMultipleEdges(false).allowingSelfLoops(true)
+                .buildGraph();
+
+        int ringSize = 3;
+        RingGraphGenerator<String, DefaultEdge> graphGenerator = new RingGraphGenerator<>(ringSize);
+        graphGenerator.generateGraph(graph);
+        Iterator<DefaultEdge> iter = new RandomWalkIterator<>(graph, "0", false, 4).asEdgeIterator();
+
+        // verify that we can call next repeatedly on the elenents and still get correct results
+        assertTrue(iter.hasNext());
+        assertTrue(iter.hasNext());
+        assertTrue(iter.hasNext());
+        assertEquals("(0 : 1)", iter.next().toString());
+        assertEquals("(1 : 2)", iter.next().toString());
+        assertEquals("(2 : 0)", iter.next().toString());
+        assertEquals("(0 : 1)", iter.next().toString());  // ensure that we loop back around
+        assertFalse(iter.hasNext());
     }
 
 }
